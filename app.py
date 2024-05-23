@@ -7,9 +7,6 @@ app = Flask(__name__)
 # Load the pre-trained Random Forest model
 rf_model = pickle.load(open('rf_model.sav', 'rb'))
 
-# Load the input data
-final_data = pd.read_csv('final_data1.csv')
-
 @app.route('/')
 def home():
     return render_template('home.html')
@@ -17,15 +14,38 @@ def home():
 @app.route('/predict_api', methods=['POST'])
 def predict_api():
     data = request.json['data']
-    input_data = [float(x) for x in data.values()]
+    input_data = [float(data['Gender']), float(data['AGE']), float(data['Height_cm']),
+                  float(data['Weight_kg']), float(data['BMI']), float(data['Obesity_Class'])]
     output = rf_model.predict([input_data])[0]
-    return jsonify({'Vitamin_D_Level': output})
+
+    # Interpret the prediction
+    if output < 20:
+        vitamin_d_status = "Deficient"
+    elif output < 30:
+        vitamin_d_status = "Insufficient"
+    elif output <= 100:
+        vitamin_d_status = "Sufficient"
+    else:
+        vitamin_d_status = "Upper Safety Limit"
+
+    return jsonify({'Vitamin_D_Level': output, 'Status': vitamin_d_status})
 
 @app.route('/predict', methods=['POST'])
 def predict():
     data = [float(x) for x in request.form.values()]
     output = rf_model.predict([data])[0]
-    return render_template("home.html", prediction_text="Predicted Vitamin D Level: {}".format(output))
+
+    # Interpret the prediction
+    if output < 20:
+        vitamin_d_status = "Deficient"
+    elif output < 30:
+        vitamin_d_status = "Insufficient"
+    elif output <= 100:
+        vitamin_d_status = "Sufficient"
+    else:
+        vitamin_d_status = "Upper Safety Limit"
+
+    return render_template("home.html", prediction_text=f"Predicted Vitamin D Level: {output} ({vitamin_d_status})")
 
 if __name__ == "__main__":
     app.run(debug=True)
